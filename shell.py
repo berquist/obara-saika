@@ -1,4 +1,3 @@
-
 def get_ijk_list(m):
     l = []
     for a in range(1, m + 2):
