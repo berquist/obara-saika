@@ -11,6 +11,7 @@ def get_ijk_list(m):
             l.append([i, j, k])
     return l
 
+
 def test_get_ijk_list():
     """
     Tests for get_ijk_list() up to m = 2.
@@ -65,6 +66,7 @@ def get_shell2(a, b):
         for q in get_ijk_list(b):
             components.append(p + q)
     return components
+
 
 def test_get_shell2():
     """

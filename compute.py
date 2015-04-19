@@ -1,7 +1,10 @@
+from __future__ import print_function
+
 from itertools import product
 
 from shell import get_shell4
 from obara_saika import get_coulomb
+
 
 za = 1.1
 zb = 1.2
@@ -17,4 +20,4 @@ rd = [0.0, 0.0, 4.0]
 for p in product('01', repeat=4):
     for c in get_shell4(int(p[0]), int(p[1]), int(p[2]), int(p[3])):
         if sum(c) > 0:
-            print c, get_coulomb(za, zb, zc, zd, ra, rb, rc, rd, c)
+            print(c, get_coulomb(za, zb, zc, zd, ra, rb, rc, rd, c))
