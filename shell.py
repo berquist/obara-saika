@@ -1,7 +1,8 @@
 def get_ijk_list(m):
+    """Form all possible (i, j, k) exponents up to maximum total angular
+    momentum m.
     """
-    Form all possible (i, j, k) exponents up to maximum total angular momentum m.
-    """
+
     l = []
     for a in range(1, m + 2):
         for b in range(1, a + 1):
@@ -11,11 +12,10 @@ def get_ijk_list(m):
             l.append([i, j, k])
     return l
 
+#-------------------------------------------------------------------------------
 
 def test_get_ijk_list():
-    """
-    Tests for get_ijk_list() up to m = 2.
-    """
+    """Tests for get_ijk_list() up to m = 2."""
 
     l0 = get_ijk_list(0)
     assert l0 == [
@@ -42,10 +42,10 @@ def test_get_ijk_list():
 #-------------------------------------------------------------------------------
 
 def get_shell4(a, b, c, d):
+    """Form all possible angular momentum combinations up to lmax = a, b,
+    c, d for center 1, 2, 3, and 4, respectively.
     """
-    Form all possible angular momentum combinations up to lmax = a, b, c, d
-    for center 1, 2, 3, and 4, respectively.
-    """
+
     components = []
     for p in get_ijk_list(a):
         for q in get_ijk_list(b):
@@ -57,16 +57,17 @@ def get_shell4(a, b, c, d):
 #-------------------------------------------------------------------------------
 
 def get_shell2(a, b):
+    """Form all possible angular momentum combinations up to lmax = a on
+    center 1 and lmax = b on center 2.
     """
-    Form all possible angular momentum combinations up to lmax = a on center 1
-    and lmax = b on center 2.
-    """
+
     components = []
     for p in get_ijk_list(a):
         for q in get_ijk_list(b):
             components.append(p + q)
     return components
 
+#-------------------------------------------------------------------------------
 
 def test_get_shell2():
     """

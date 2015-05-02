@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from math import sqrt, pi, exp, gamma
 from mpmath import gammainc
 import sys
@@ -5,21 +7,54 @@ import sys
 #-------------------------------------------------------------------------------
 
 class X2:
+
+    """The parent class for two-center integrals.
+
+    Keyword arguments:
+    scale -- The multiplicative scaling factor for the non-zero term contribution.
+    prefactors -- A list of the multiplicative prefactors that appear in recursion expressions before each integral.
+    q -- A list of 6 integers representing the angular momentum of each center [la, ma, na, lb, mb, nb].
+    kind -- A one-letter string representing the type of integral (one of S, T, V, M, L, E, J).
+    operator -- For integrals with variable operators (M, E), the 3 powers of the operator components [nx, ny, nz].
+    order -- For auxiliary integrals, the superscript present in the formulas.
+    """
+
     def __init__(self,
                  scale=1,
                  prefactors=[],
                  q=[0,0,0,0,0,0],
                  kind='S',
+                 operator=[0,0,0],
                  order=0):
         self.scale = scale
         self.prefactors = prefactors
         self.q = q
         self.kind = kind
+        self.operator = operator
         self.order = order
+
+    def __str__(self):
+        if self.kind in ('S'):
+            return "{}({})".format(self.kind, self.q)
+        elif self.kind in ('T', 'V'):
+            return "{}(q={}, order={})".format(self.kind,
+                                               self.q,
+                                               self.order)
+
+    def __repr__(self):
+        return "X2({}, {}, {}, {}, {}, {})".format(self.scale,
+                                                   self.prefactors,
+                                                   self.q,
+                                                   self.kind,
+                                                   self.operator,
+                                                   self.order)
 
 #-------------------------------------------------------------------------------
 
 class X4:
+
+    """The parent class for four-center integrals."""
+
     def __init__(self,
                  scale=1,
                  prefactors=[],
@@ -33,6 +68,9 @@ class X4:
 #-------------------------------------------------------------------------------
 
 def list_is_flat(l):
+    """Determine if the given list is flat (only check for other lists,
+    not other iterables).
+    """
     for x in l:
         if isinstance(x, list):
             return False
@@ -41,13 +79,15 @@ def list_is_flat(l):
 #-------------------------------------------------------------------------------
 
 def flatten_sub(l):
+    """Flatten a list by one level."""
     return [item for sublist in l for item in sublist]
 
 #-------------------------------------------------------------------------------
 
 def flatten(l):
+    """Flatten a list as much as possible."""
     l_out = l[:]
-    for i in range(50):
+    for _ in range(50):
         if list_is_flat(l_out):
             return l_out
         else:
@@ -59,7 +99,39 @@ def flatten(l):
 #-------------------------------------------------------------------------------
 
 def find_fun_to_lower(q, n):
+    """Determine which basis function to lower in an n-center integral.
 
+    Arguments:
+    q -- The list of exponents, length == 3 * n.
+    n -- The number of integral centers.
+
+    >>> find_fun_to_lower([1, 0, 0, 0, 0, 0], 2)
+    0
+    >>> find_fun_to_lower([0, 1, 0, 0, 0, 0], 2)
+    0
+    >>> find_fun_to_lower([0, 0, 1, 0, 0, 0], 2)
+    0
+    >>> find_fun_to_lower([0, 0, 0, 1, 0, 0], 2)
+    1
+    >>> find_fun_to_lower([0, 0, 0, 0, 1, 0], 2)
+    1
+    >>> find_fun_to_lower([0, 0, 0, 0, 0, 1], 2)
+    1
+    >>> find_fun_to_lower([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], 4)
+    1
+    >>> find_fun_to_lower([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], 4)
+    3
+    >>> find_fun_to_lower([1, 0, 0, 0, 0, 0, 0, 0, 1], 3)
+    0
+    >>> find_fun_to_lower([0, 0, 0, 0, 0, 0, 0, 0, 1], 3)
+    2
+    >>> find_fun_to_lower([0, 0, 0, 0, 1, 0, 0, 0, 1], 3)
+    1
+    >>> find_fun_to_lower([0, 0, 0, 0, 2, 0, 0, 0, 1], 3)
+    2
+    """
+
+    # Determine the total angular momentum on each center.
     l = []
     for i in range(n):
         l.append(q[i*3] + q[i*3 + 1] + q[i*3 + 2])
@@ -70,6 +142,7 @@ def find_fun_to_lower(q, n):
     kmax = max(l) + 1
     for i in range(n):
         k = l[i]
+        # If we're larger than an s-function...
         if k > 0:
             if k < kmax:
                 kmax = k
@@ -84,6 +157,20 @@ def find_fun_to_lower(q, n):
 #-------------------------------------------------------------------------------
 
 def find_component_to_lower(fun):
+    """Determine which exponent/component of a basis function to lower.
+
+    The first component with a non-zero value will be the result.
+
+    Arguments:
+    fun -- The coefficients for a single basis function (list of 3 integers).
+
+    >>> find_component_to_lower([0, 0, 1])
+    2
+    >>> find_component_to_lower([0, 1, 1])
+    1
+    >>> find_component_to_lower([1, 0, 1])
+    0
+    """
 
     for i, c in enumerate(fun):
         if c > 0:
@@ -103,14 +190,14 @@ def apply_os4(x4):
     component = find_component_to_lower([x4.q[fun*3], x4.q[fun*3 + 1], x4.q[fun*3 + 2]])
 
     if component == 0:
-        i1 = [ 0, 1, 2, 3][fun]
-        i2 = [ 4, 4, 5, 5][fun]
+        i1 = [  0,  1,  2,  3][fun]
+        i2 = [  4,  4,  5,  5][fun]
     if component == 1:
-        i1 = [ 6, 7, 8, 9][fun]
-        i2 = [10,10,11,11][fun]
+        i1 = [  6,  7,  8,  9][fun]
+        i2 = [ 10, 10, 11, 11][fun]
     if component == 2:
-        i1 = [12,13,14,15][fun]
-        i2 = [16,16,17,17][fun]
+        i1 = [ 12, 13, 14, 15][fun]
+        i2 = [ 16, 16, 17, 17][fun]
 
     bra = [0, 1]
     ket = [2, 3]
@@ -194,23 +281,41 @@ def apply_os4(x4):
 
 #-------------------------------------------------------------------------------
 
-def apply_os2(x, kind='S'):
+def apply_os2(x, kind):
+    """Apply the Obara-Saika recursion scheme to a two-center integral.
 
-    if sum(x.q) == 0:
+    Arguments:
+    x -- A two-center integral.
+    kind -- The type of integral (string S, T, V, M, L, E, J).
+    """
+
+    orders = x.q + x.operator
+
+    # base case
+    if sum(orders) == 0:
         x.kind = kind
         return [x]
 
-    fun = find_fun_to_lower(x.q, 2)
-    component = find_component_to_lower([x.q[fun*3], x.q[fun*3 + 1], x.q[fun*3 + 2]])
+    # Determine which basis function and component to lower.
+    # The component is one of (x, y, z).
+    fun = find_fun_to_lower(orders, 3)
+    # Make sure to not choose the operator vrr until q is exhausted.
+    if fun == 2 and sum(x.q) > 0:
+        fun = find_fun_to_lower(x.q, 2)
+    component = find_component_to_lower([orders[fun*3], orders[fun*3 + 1], orders[fun*3 + 2]])
 
+    # Determine the index of q to descend on.
+    # where q = [xa, xb, ya, yb, za, zb].
+    # Note: I thought the order of q == [xa, ya, za, xb, yb, zb]?
     if component == 0:
-        i1 = [ 0, 1][fun]
+        i1 = [0, 1, 6][fun]
     if component == 1:
-        i1 = [ 2, 3][fun]
+        i1 = [2, 3, 7][fun]
     if component == 2:
-        i1 = [ 4, 5][fun]
+        i1 = [4, 5, 8][fun]
 
     if kind == 'S':
+        # The vrr for overlap integrals consists of three 'terms'.
         pre = []
         pre.append(i1)
         pre.append(6)
@@ -222,10 +327,10 @@ def apply_os2(x, kind='S'):
         pre.append(6)
         pre.append(7)
         pre.append(8)
-        i2 = [ 9, 10][fun]
+        i2 = [9, 10][fun]
         pre.append(i2)
 
-    if kind == 'N':
+    if kind == 'V':
         if component == 0:
             i2 = 6
         if component == 1:
@@ -240,39 +345,72 @@ def apply_os2(x, kind='S'):
         pre.append(9)
         pre.append(10)
 
-    l = [0, 1]
-    a = fun
-    l.remove(a)
-    b = l[0]
+    if kind == 'M':
+        pre = []
+        pre.append(i1)
+        pre.append(9)
+        pre.append(10)
+        pre.append(11)
 
+    # Determine which of the basis functions is ('a', 'b').
+    l = [0, 1]
+    if fun == 2:
+        a, b = 2, 2
+    else:
+        a = fun
+        l.remove(a)
+        b = l[0]
+
+    # These are the number of integrals that appear in the main
+    # recursion equations for each kind.
     if kind == 'S':
         num_terms = 3
     elif kind == 'T':
         num_terms = 5
-    elif kind == 'N':
+    elif kind == 'V':
         num_terms = 6
+    elif kind == 'M':
+        num_terms = 4
+        if fun == 2:
+            num_terms = 2
+    elif kind == 'L':
+        num_terms = 5
+    # Not implemented/immediately clear yet...
+    elif kind == 'E':
+        num_terms = -1
+    elif kind == 'J':
+        num_terms = -1
     else:
         sys.stderr.write('ERROR: unexpected kind\n')
+        sys.exit(1)
 
+    # Make copies of the current integral to manipulate later,
+    # one for each term in the recursion expression.
     x_copy = []
     scale = x.scale
-    order = x.order # not used for S and T
+    order = x.order # currently only used for V
     for term in range(num_terms):
         x_new = X2(scale=scale,
                    prefactors=x.prefactors[:],
                    q=x.q[:],
                    kind=kind,
+                   operator=x.operator[:],
                    order=order)
         x_copy.append(x_new)
 
-    if kind == 'N':
+    # These are the terms in [A19] with (m+1).
+    if kind == 'V':
         for term in [1, 3, 5]:
             x_copy[term].order += 1
 
+    # Look at the last line of [A12].
     if kind == 'T':
         x_copy[3].kind = 'S'
         x_copy[4].kind = 'S'
 
+    # 1. Lower the target component for all three terms.
+    # 2. Lower again on center 'a'.
+    # 3. Lower again on center 'b'.
     if kind == 'S':
         x_copy[0].q[fun*3 + component] -= 1
         x_copy[1].q[fun*3 + component] -= 1
@@ -284,12 +422,13 @@ def apply_os2(x, kind='S'):
         x_copy[0].q[fun*3 + component] -= 1
         x_copy[1].q[fun*3 + component] -= 1
         x_copy[2].q[fun*3 + component] -= 1
-        # term 4 (x_copy[3]) is just a copy
+        # term 4 (x_copy[3]) has the same components but becomes an
+        # overlap integral
         x_copy[4].q[fun*3 + component] -= 2
         x_copy[1].q[a*3 + component] -= 1
         x_copy[2].q[b*3 + component] -= 1
 
-    if kind == 'N':
+    if kind == 'V':
         x_copy[0].q[fun*3 + component] -= 1
         x_copy[2].q[fun*3 + component] -= 1
         x_copy[4].q[fun*3 + component] -= 1
@@ -299,33 +438,69 @@ def apply_os2(x, kind='S'):
         x_copy[3].q = x_copy[2].q[:]
         x_copy[5].q = x_copy[4].q[:]
 
+    if kind == 'M':
+        # For the case of the moment operator over s functions.
+        if fun == 2:
+            x_copy[0].operator[component] -= 1
+            x_copy[1].operator[component] -= 2
+        else:
+            x_copy[0].q[fun*3 + component] -= 1
+            x_copy[1].q[fun*3 + component] -= 1
+            x_copy[2].q[fun*3 + component] -= 1
+            x_copy[3].q[fun*3 + component] -= 1
+            x_copy[1].q[a*3 + component] -= 1
+            x_copy[2].q[b*3 + component] -= 1
+            x_copy[3].operator[component] -= 1
+
+    # Now that the descending part of the vrr has been performed, keep
+    # track of which new terms are going to be zero/non-zero.
     n = []
+    # The first term is always going to be non-zero, otherwise we
+    # wouldn't even be in the vrr routine.
     n.append(1)
-    if kind == 'N':
-        n.append(1)
-    n.append(x.q[a*3 + component] - 1)
-    if kind == 'N':
+
+    if kind == 'S':
         n.append(x.q[a*3 + component] - 1)
-    n.append(x.q[b*3 + component])
-    if kind == 'N':
         n.append(x.q[b*3 + component])
 
     if kind == 'T':
+        n.append(x.q[a*3 + component] - 1)
+        n.append(x.q[b*3 + component])
         n.append(1)
         n.append(x.q[a*3 + component] - 1)
 
+    if kind == 'V':
+        n.append(1)
+        n.append(x.q[a*3 + component] - 1)
+        n.append(x.q[a*3 + component] - 1)
+        n.append(x.q[b*3 + component])
+        n.append(x.q[b*3 + component])
+
+    if kind == 'M':
+        if fun == 2:
+            n.append(x.operator[component] - 1)
+        else:
+            n.append(x.q[a*3 + component] - 1)
+            n.append(x.q[b*3 + component])
+            n.append(x.operator[component])
+
+    # Generate a list of all non-zero terms for an expression.
     x_list = []
     for term in range(num_terms):
         if n[term] > 0:
-            if all(i >= 0 for i in x_copy[term].q):
+            orders = x_copy[term].q + x_copy[term].operator
+            if all(i >= 0 for i in orders):
                 if n[term] > 1:
                     x_copy[term].scale *= n[term]
                 x_copy[term].prefactors.append(pre[term])
                 x_list.append(x_copy[term])
 
+    # If we've hit the base case where all the components are zero,
+    # terminate, otherwise recurse through each term.
     x_final = []
     for y in x_list:
-        if all(i == 0 for i in y.q):
+        orders = y.q + y.operator
+        if all(i == 0 for i in orders):
             x_final.append([y])
         else:
             x_final.append(apply_os2(y, kind=y.kind))
@@ -335,11 +510,13 @@ def apply_os2(x, kind='S'):
 #-------------------------------------------------------------------------------
 
 def get_r12_squared(r1, r2):
+    """Get the distance between two centers in Cartesian space."""
     return (r1[0] - r2[0])**2.0 + (r1[1] - r2[1])**2.0 + (r1[2] - r2[2])**2.0
 
 #-------------------------------------------------------------------------------
 
 def get_k(z1, z2, r1, r2):
+
     r12 = get_r12_squared(r1, r2)
     f0 = z1 + z2
     if r12 > 0.0:
@@ -352,6 +529,7 @@ def get_k(z1, z2, r1, r2):
 #-------------------------------------------------------------------------------
 
 def get_rho(za, zb, zc, zd):
+
     z = za + zb
     n = zc + zd
     return z*n/(z + n)
@@ -359,6 +537,7 @@ def get_rho(za, zb, zc, zd):
 #-------------------------------------------------------------------------------
 
 def get_bi_center(z1, z2, r1, r2):
+
     z = z1 + z2
     rx = (z1*r1[0] + z2*r2[0])/z
     ry = (z1*r1[1] + z2*r2[1])/z
@@ -368,6 +547,7 @@ def get_bi_center(z1, z2, r1, r2):
 #-------------------------------------------------------------------------------
 
 def boys(n, x):
+
     if x > 0.0:
         f = 2.0*x**(n + 0.5)
         g = gamma(n + 0.5)
@@ -379,6 +559,7 @@ def boys(n, x):
 #-------------------------------------------------------------------------------
 
 def get_aux(za, zb, zc, zd, ra, rb, rc, rd):
+
     k1 = get_k(za, zb, ra, rb)
     k2 = get_k(zc, zd, rc, rd)
     return k1*k2/sqrt(za + zb + zc + zd)
@@ -437,34 +618,35 @@ def get_coulomb(za, zb, zc, zd, ra, rb, rc, rd, c):
 
 #-------------------------------------------------------------------------------
 
-def test_get_coulomb():
-
-    za = 1.1
-    zb = 1.2
-    zc = 1.3
-    zd = 1.4
-
-    ra = [1.0, 0.0, 1.0]
-    rb = [0.0, 1.0, 2.0]
-    rc = [0.0, 0.0, 3.0]
-    rd = [0.0, 0.0, 4.0]
-
-    ref = 1.71817807954e-05
-    integral = get_coulomb(za, zb, zc, zd, ra, rb, rc, rd, [2, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0])
-
-    assert abs(integral - ref) < 1.0e-16
-
-#-------------------------------------------------------------------------------
-
 def get_overlap(za, zb, ra, rb, c):
+    """Compute the overlap integral
+     ...
+    where
+     ...
 
-    rp = get_bi_center(za, zb, ra, rb)
+    Recursion expression:
+     (a + 1_{i} || b) = (P_{i} - A_{i})*(a || b) +
+                        (0.5/z)*(a - 1_{i} || b) +
+                        (0.5/z)*(a || b - 1_{i})
 
+    Arguments:
+    za, zb -- Exponent of each basis function center
+    ra, rb -- Position of each basis function center in Cartesian space
+    c -- A list of 6 integers for the angular momentum of each component of each bf [xa, ya, za, xb, yb, zb]
+    """
+
+    # Compute the base case:
+    # equations [14], [13], product Gaussian center, distance between basis function centers, and (s||s)/[22] [Table VI, p3972]
     z = za + zb
     e = za*zb/(za + zb)
-    f = (ra[0] - rb[0])**2 + (ra[1] - rb[1])**2 + (ra[2] - rb[2])**2
-    aux = exp(-e*f)*(pi/z)**1.5
+    rp = get_bi_center(za, zb, ra, rb)
+    ab = get_r12_squared(ra, rb)
+    aux = exp(-e*ab)*(pi/z)**1.5
 
+    # Determine all possible prefactors for each term in the recursion
+    # expression.
+    # equation A2, p3971
+    # The components of (P - B) appear because (a||b) == (b||a).
     prefac = []
     prefac.append(rp[0] - ra[0])
     prefac.append(rp[0] - rb[0])
@@ -476,45 +658,26 @@ def get_overlap(za, zb, ra, rb, c):
     prefac.append(0.5/z)
 
     fun = X2(q=c)
-    expansion = apply_os2(fun)
+    expansion = apply_os2(fun, kind='S')
     integral = 0.0
     for f in expansion:
         g = 1.0
         for k in f.prefactors:
             g *= prefac[k]
         integral += float(f.scale)*aux*g
+
     return integral
-
-#-------------------------------------------------------------------------------
-
-def test_get_overlap():
-
-    za = 1.8
-    zb = 2.8
-    ra = [0.0, 0.0, 0.0]
-    rb = [0.5, 0.8, -0.2]
-
-    integral = get_overlap(za, zb, ra, rb, [0, 0, 0, 0, 0, 0])
-    assert abs(integral - 0.20373275913014607) < 1.0e-16
-
-    integral = get_overlap(za, zb, ra, rb, [1, 0, 0, 0, 0, 0])
-    assert abs(integral - 0.062005622343957505) < 1.0e-16
-
-    integral = get_overlap(za, zb, ra, rb, [1, 1, 0, 1, 1, 0])
-    assert abs(integral - -0.00043801221837779696) < 1.0e-16
-
-    integral = get_overlap(za, zb, ra, rb, [2, 1, 0, 1, 1, 0])
-    assert abs(integral - -0.0002385994651113168) < 1.0e-16
 
 #-------------------------------------------------------------------------------
 
 def get_kinetic(za, zb, ra, rb, c):
 
-    rp = get_bi_center(za, zb, ra, rb)
-
+    # Compute the base case:
+    # equations [14], [13], product Gaussian center, distance between basis function centers, and (s||s) [22]
     z = za + zb
     e = za*zb/(za + zb)
-    ab = (ra[0] - rb[0])**2 + (ra[1] - rb[1])**2 + (ra[2] - rb[2])**2
+    rp = get_bi_center(za, zb, ra, rb)
+    ab = get_r12_squared(ra, rb)
     aux = get_overlap(za, zb, ra, rb, [0, 0, 0, 0, 0, 0])
 
     prefac = []
@@ -534,6 +697,7 @@ def get_kinetic(za, zb, ra, rb, c):
     expansion = apply_os2(fun, kind='T')
     integral = 0.0
     for f in expansion:
+        # equation A13
         if f.kind == 'T':
             g = e*(3.0 - 2.0*e*ab)
             for k in f.prefactors:
@@ -544,25 +708,8 @@ def get_kinetic(za, zb, ra, rb, c):
             for k in f.prefactors:
                 g *= prefac[k]
             integral += float(f.scale)*aux*g
+
     return integral
-
-#-------------------------------------------------------------------------------
-
-def test_get_kinetic():
-
-    za = 1.8
-    zb = 2.0
-    ra = [0.0, 0.0, 0.0]
-    rb = [0.5, 0.8, -0.2]
-
-    integral = get_kinetic(za, zb, ra, rb, [0, 0, 0, 0, 0, 0])
-    assert abs(integral - 0.3652714583525358) < 1.0e-16
-
-    integral = get_kinetic(za, zb, ra, rb, [1, 0, 0, 0, 0, 0])
-    assert abs(integral - 0.2514265587836556) < 1.0e-16
-
-    integral = get_kinetic(za, zb, ra, rb, [2, 2, 2, 2, 2, 2])
-    assert abs(integral - -7.40057384314e-05) < 1.0e-16
 
 #-------------------------------------------------------------------------------
 
@@ -570,8 +717,7 @@ def get_nuclear(za, zb, ra, rb, rc, c):
 
     z = za + zb
     rp = get_bi_center(za, zb, ra, rb)
-    pc = (rp[0] - rc[0])**2 + (rp[1] - rc[1])**2 + (rp[2] - rc[2])**2
-
+    pc = get_r12_squared(rp, rc)
     u = z*pc
     aux = -2.0*(z/pi)**0.5*get_overlap(za, zb, ra, rb, [0, 0, 0, 0, 0, 0])
 
@@ -589,33 +735,159 @@ def get_nuclear(za, zb, ra, rb, rc, c):
     prefac.append(-0.5/z)
 
     fun = X2(q=c)
-    expansion = apply_os2(fun, kind='N')
+    expansion = apply_os2(fun, kind='V')
     integral = 0.0
     for f in expansion:
         g = 1.0
         for k in f.prefactors:
             g *= prefac[k]
         integral += float(f.scale)*aux*g*boys(f.order, u)
+
     return integral
 
 #-------------------------------------------------------------------------------
 
-def test_get_nuclear():
+def get_moment(za, zb, ra, rb, rc, c, order):
+    """Compute the Cartesian moment integral
+     ...
+    where
+     ...
 
-    za = 1.8
-    zb = 2.0
-    ra = [0.0, 0.0, 0.0]
-    rb = [0.5, 0.8, -0.2]
-    rc = [0.5, 0.8, 0.2]
+    Recursion expression:
+     (a + 1_{i} | M(mu) | b) = (P_{i} - A_{i})*(a | M(mu) | b) +
+                               (0.5/z)*(a - 1_{i} | M(mu) | b) +
+                               (0.5/z)*(a | M(mu) | b - 1_{i}) +
+                               (0.5/z)*(a | M(mu - 1_{i}) | b)
 
-    integral = get_nuclear(za, zb, ra, rb, rc, [0, 0, 0, 0, 0, 0])
-    assert abs(integral - -0.49742209545104593) < 1.0e-16
+    Arguments:
+    za, zb -- Exponent of each basis function center
+    ra, rb -- Position of each basis function center in Cartesian space
+    rc -- Postion of the moment operator in Cartesian space
+    c -- A list of 6 integers for the angular momentum of each component of each bf [xa, ya, za, xb, yb, zb]
+    order -- The powers of the three components of the moment operator [nx, ny, nz]
+    """
 
-    integral = get_nuclear(za, zb, ra, rb, rc, [1, 0, 0, 0, 0, 0])
-    assert abs(integral - -0.15987439458254471) < 1.0e-16
+    z = za + zb
+    e = za*zb/(za + zb)
+    rp = get_bi_center(za, zb, ra, rb)
+    ab = get_r12_squared(ra, rb)
+    aux = get_overlap(za, zb, ra, rb, [0, 0, 0, 0, 0, 0])
 
-    integral = get_nuclear(za, zb, ra, rb, rc, [2, 2, 2, 0, 0, 0])
-    assert abs(integral - -0.003801373531942607) < 1.0e-16
+    prefac = []
+    prefac.append(rp[0] - ra[0])
+    prefac.append(rp[0] - rb[0])
+    prefac.append(rp[1] - ra[1])
+    prefac.append(rp[1] - rb[1])
+    prefac.append(rp[2] - ra[2])
+    prefac.append(rp[2] - rb[2])
+    prefac.append(rp[0] - rc[0])
+    prefac.append(rp[1] - rc[1])
+    prefac.append(rp[2] - rc[2])
+    prefac.append(0.5/z)
+    prefac.append(0.5/z)
+    prefac.append(0.5/z)
 
-    integral = get_nuclear(za, zb, ra, rb, rc, [1, 1, 1, 1, 1, 1])
-    assert abs(integral - 8.8415484347060993e-5) < 1.0e-16
+    fun = X2(q=c, operator=order)
+    expansion = apply_os2(fun, kind='M')
+    integral = 0.0
+    for f in expansion:
+        g = 1.0
+        for k in f.prefactors:
+            g *= prefac[k]
+        integral += float(f.scale)*aux*g
+
+    return integral
+
+#-------------------------------------------------------------------------------
+
+def get_angmom():
+    """Compute the orbital angular momentum integral
+     ...
+    where
+     ...
+
+    Recursion expression:
+
+    Arguments:
+    """
+
+    z = za + zb
+    e = za*zb/(za + zb)
+    rp = get_bi_center(za, zb, ra, rb)
+    ab = get_r12_squared(ra, rb)
+
+    prefac = []
+
+    fun = X2(q=c)
+    expansion = apply_os2(fun, kind='L')
+    integral = 0.0
+    for f in expansion:
+        g = 1.0
+        for k in f.prefactors:
+            g *= prefac[k]
+        integral += float(f.scale)*aux*g
+
+    return integral
+
+#-------------------------------------------------------------------------------
+
+def get_efield():
+    """Compute the electric field integral
+     ...
+    where
+     ...
+
+    Recursion expression:
+
+    Arguments:
+    """
+
+    z = za + zb
+    e = za*zb/(za + zb)
+    rp = get_bi_center(za, zb, ra, rb)
+    ab = get_r12_squared(ra, rb)
+
+    prefac = []
+
+    fun = X2(q=c)
+    expansion = apply_os2(fun, kind='E')
+    integral = 0.0
+    for f in expansion:
+        g = 1.0
+        for k in f.prefactors:
+            g *= prefac[k]
+        integral += float(f.scale)*aux*g
+
+    return integral
+
+
+#-------------------------------------------------------------------------------
+
+def get_spinorb():
+    """Compute the spin-orbit interaction integral
+     ...
+    where
+     ...
+
+    Recursion expression:
+
+    Arguments:
+    """
+
+    z = za + zb
+    e = za*zb/(za + zb)
+    rp = get_bi_center(za, zb, ra, rb)
+    ab = get_r12_squared(ra, rb)
+
+    prefac = []
+
+    fun = X2(q=c)
+    expansion = apply_os2(fun, kind='J')
+    integral = 0.0
+    for f in expansion:
+        g = 1.0
+        for k in f.prefactors:
+            g *= prefac[k]
+        integral += float(f.scale)*aux*g
+
+    return integral

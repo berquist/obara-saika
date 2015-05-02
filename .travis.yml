@@ -3,6 +3,6 @@ python:
   - "2.7"
 install:
   - "pip install mpmath"
-  - "pip install pytest"
+  - "pip install nose"
 script:
-  - "py.test obara_saika.py"
+  - "nosetests --with-doctest ."
