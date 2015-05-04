@@ -148,10 +148,6 @@ def find_fun_to_lower(q, n):
                 kmax = k
                 fun = i
 
-    if fun == -1:
-        sys.stderr.write('ERROR in find_fun_to_lower\n')
-        sys.exit(1)
-
     return fun
 
 #-------------------------------------------------------------------------------
@@ -176,8 +172,7 @@ def find_component_to_lower(fun):
         if c > 0:
             return i
 
-    sys.stderr.write('ERROR in find_component_to_lower\n')
-    sys.exit(1)
+    return -1
 
 #-------------------------------------------------------------------------------
 
@@ -187,6 +182,8 @@ def apply_os4(x4):
         return [x4]
 
     fun = find_fun_to_lower(x4.q, 4)
+    if fun == -1:
+        return [x4]
     component = find_component_to_lower([x4.q[fun*3], x4.q[fun*3 + 1], x4.q[fun*3 + 2]])
 
     if component == 0:
@@ -302,6 +299,9 @@ def apply_os2(x, kind):
     # Make sure to not choose the operator vrr until q is exhausted.
     if fun == 2 and sum(x.q) > 0:
         fun = find_fun_to_lower(x.q, 2)
+    if fun == -1:
+        x.kind = kind
+        return [x]
     component = find_component_to_lower([orders[fun*3], orders[fun*3 + 1], orders[fun*3 + 2]])
 
     # Determine the index of q to descend on.
