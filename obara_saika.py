@@ -1,7 +1,7 @@
 from __future__ import print_function
 
-from math import sqrt, pi, exp, gamma
-from mpmath import gammainc
+from math import sqrt, pi, exp
+from mpmath import gamma, gammainc
 import sys
 
 #-------------------------------------------------------------------------------
