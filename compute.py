@@ -74,9 +74,21 @@ def compute_moment():
     M = os.get_moment(za, zb, ra, rb, rc, q_large, [1, 1, 1])
     print(M)
 
+def compute_angmom():
+    print('# compute_angmom_base')
+    L = os.get_angmom(za, zb, ra, rb, rc, q_base, 0)
+    print(L)
+    print('# compute_angmom_small')
+    L = os.get_angmom(za, zb, ra, rb, rc, q_small, 0)
+    print(L)
+    print('# compute_angmom_large')
+    L = os.get_angmom(za, zb, ra, rb, rc, q_large, 0)
+    print(L)
+
 
 if __name__ == '__main__':
     compute_overlap()
     compute_kinetic()
     compute_nuclear()
     compute_moment()
+    compute_angmom()

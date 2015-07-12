@@ -16,6 +16,7 @@ class X2:
     q -- A list of 6 integers representing the angular momentum of each center [la, ma, na, lb, mb, nb].
     kind -- A one-letter string representing the type of integral (one of S, T, V, M, L, E, J).
     operator -- For integrals with variable operators (M, E), the 3 powers of the operator components [nx, ny, nz].
+    d -- For integrals with multiple components (L, J), one of {0, 1, 2} specifying the Cartesian component.
     order -- For auxiliary integrals, the superscript present in the formulas.
     """
 
@@ -25,12 +26,14 @@ class X2:
                  q=[0,0,0,0,0,0],
                  kind='S',
                  operator=[0,0,0],
+                 d=0,
                  order=0):
         self.scale = scale
         self.prefactors = prefactors
         self.q = q
         self.kind = kind
         self.operator = operator
+        self.d = d
         self.order = order
 
     def __str__(self):
@@ -42,12 +45,13 @@ class X2:
                                                self.order)
 
     def __repr__(self):
-        return "X2({}, {}, {}, {}, {}, {})".format(self.scale,
-                                                   self.prefactors,
-                                                   self.q,
-                                                   self.kind,
-                                                   self.operator,
-                                                   self.order)
+        return "X2({}, {}, {}, {}, {}, {}, {})".format(self.scale,
+                                                       self.prefactors,
+                                                       self.q,
+                                                       self.kind,
+                                                       self.operator,
+                                                       self.d,
+                                                       self.order)
 
 #-------------------------------------------------------------------------------
 
@@ -352,6 +356,16 @@ def apply_os2(x, kind):
         pre.append(10)
         pre.append(11)
 
+    if kind == 'L':
+        pre = []
+        pre.append(i1)
+        pre.append(6)
+        pre.append(7)
+        pre.append(8 + x.d)
+        pre.append(11)
+        pre.append(12)
+        pre.append(13)
+
     # Determine which of the basis functions is ('a', 'b').
     l = [0, 1]
     if fun == 2:
@@ -374,8 +388,8 @@ def apply_os2(x, kind):
         if fun == 2:
             num_terms = 2
     elif kind == 'L':
-        num_terms = 5
-    # Not implemented/immediately clear yet...
+        num_terms = 7
+    # Not implemented yet...
     elif kind == 'E':
         num_terms = -1
     elif kind == 'J':
@@ -395,6 +409,7 @@ def apply_os2(x, kind):
                    q=x.q[:],
                    kind=kind,
                    operator=x.operator[:],
+                   d=x.d,
                    order=order)
         x_copy.append(x_new)
 
@@ -407,6 +422,13 @@ def apply_os2(x, kind):
     if kind == 'T':
         x_copy[3].kind = 'S'
         x_copy[4].kind = 'S'
+
+    # Look at the last two lines of [A31].
+    if kind == 'L':
+        x_copy[3].kind = 'S'
+        x_copy[4].kind = 'S'
+        x_copy[5].kind = 'S'
+        x_copy[6].kind = 'S'
 
     # 1. Lower the target component for all three terms.
     # 2. Lower again on center 'a'.
@@ -452,6 +474,20 @@ def apply_os2(x, kind):
             x_copy[2].q[b*3 + component] -= 1
             x_copy[3].operator[component] -= 1
 
+    if kind == 'L':
+        x_copy[0].q[fun*3 + component] -= 1
+        x_copy[1].q[fun*3 + component] -= 1
+        x_copy[2].q[fun*3 + component] -= 1
+        x_copy[3].q[fun*3 + component] -= 1
+        x_copy[4].q[fun*3 + component] -= 1
+        x_copy[5].q[fun*3 + component] -= 1
+        x_copy[6].q[fun*3 + component] -= 1
+        x_copy[1].q[a*3 + component] -= 1
+        x_copy[2].q[b*3 + component] -= 1
+        x_copy[4].q[b*3 + 0] -= 1
+        x_copy[5].q[b*3 + 1] -= 1
+        x_copy[6].q[b*3 + 2] -= 1
+
     # Now that the descending part of the vrr has been performed, keep
     # track of which new terms are going to be zero/non-zero.
     n = []
@@ -483,6 +519,14 @@ def apply_os2(x, kind):
             n.append(x.q[a*3 + component] - 1)
             n.append(x.q[b*3 + component])
             n.append(x.operator[component])
+
+    if kind == 'L':
+        n.append(x.q[a*3 + component] - 1)
+        n.append(x.q[b*3 + component])
+        n.append([1 if d == component else 0 for d in range(3)][x.d])
+        n.append([1 if d == component and d == 0 else 0 for d in range(3)][x.d])
+        n.append([1 if d == component and d == 1 else 0 for d in range(3)][x.d])
+        n.append([1 if d == component and d == 2 else 0 for d in range(3)][x.d])
 
     # Generate a list of all non-zero terms for an expression.
     x_list = []
@@ -800,7 +844,7 @@ def get_moment(za, zb, ra, rb, rc, c, order):
 
 #-------------------------------------------------------------------------------
 
-def get_angmom():
+def get_angmom(za, zb, ra, rb, rc, c, d):
     """Compute the orbital angular momentum integral
      ...
     where
@@ -809,16 +853,36 @@ def get_angmom():
     Recursion expression:
 
     Arguments:
+    za, zb -- Exponent of each basis function center
+    ra, rb -- Position of each basis function center in Cartesian space
+    rc -- Postion of the angular momentum operator in Cartesian space
+    c -- A list of 6 integers for the angular momentum of each component of each bf [xa, ya, za, xb, yb, zb]
+    d -- ... {0, 1, 2}
     """
 
     z = za + zb
     e = za*zb/(za + zb)
     rp = get_bi_center(za, zb, ra, rb)
-    ab = get_r12_squared(ra, rb)
+    # Equation [A31]
+    aux = 2*e*(ra[d]-rc[d])*(rb[d]-rc[d])*get_overlap(za, zb, ra, rb, [0, 0, 0, 0, 0, 0])
 
     prefac = []
+    prefac.append(rp[0] - ra[0])
+    prefac.append(rp[0] - rb[0])
+    prefac.append(rp[1] - ra[1])
+    prefac.append(rp[1] - rb[1])
+    prefac.append(rp[2] - ra[2])
+    prefac.append(rp[2] - rb[2])
+    prefac.append(0.5/z)
+    prefac.append(0.5/z)
+    prefac.append((zb/z)*(rb[0] - rc[0]))
+    prefac.append((zb/z)*(rb[1] - rc[1]))
+    prefac.append((zb/z)*(rb[2] - rc[2]))
+    prefac.append(0.5/z)
+    prefac.append(0.5/z)
+    prefac.append(0.5/z)
 
-    fun = X2(q=c)
+    fun = X2(q=c, d=d)
     expansion = apply_os2(fun, kind='L')
     integral = 0.0
     for f in expansion:
@@ -860,7 +924,6 @@ def get_efield():
 
     return integral
 
-
 #-------------------------------------------------------------------------------
 
 def get_spinorb():
@@ -881,8 +944,46 @@ def get_spinorb():
 
     prefac = []
 
-    fun = X2(q=c)
+    fun = X2(q=c, d=d)
     expansion = apply_os2(fun, kind='J')
+    integral = 0.0
+    for f in expansion:
+        g = 1.0
+        for k in f.prefactors:
+            g *= prefac[k]
+        integral += float(f.scale)*aux*g
+
+    return integral
+
+#-------------------------------------------------------------------------------
+
+def get_fermi(za, zb, ra, rb, rc, c):
+    """Compute the Fermi contact integral
+     ...
+    """
+
+    z = za + zb
+    e = za*zb/(za + zb)
+    rp = get_bi_center(za, zb, ra, rb)
+    ab = get_r12_squared(ra, rb)
+    aux = exp(-e*ab)*(pi/z)**1.5
+
+    # Determine all possible prefactors for each term in the recursion
+    # expression.
+    # equation A2, p3971
+    # The components of (P - B) appear because (a||b) == (b||a).
+    prefac = []
+    prefac.append(rp[0] - ra[0])
+    prefac.append(rp[0] - rb[0])
+    prefac.append(rp[1] - ra[1])
+    prefac.append(rp[1] - rb[1])
+    prefac.append(rp[2] - ra[2])
+    prefac.append(rp[2] - rb[2])
+    prefac.append(0.5/z)
+    prefac.append(0.5/z)
+
+    fun = X2(q=c)
+    expansion = apply_os2(fun, kind='S')
     integral = 0.0
     for f in expansion:
         g = 1.0
