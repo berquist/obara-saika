@@ -21,5 +21,5 @@ with many thanks for providing the building blocks.
 
 ## Dependencies
 
-* Python (tested 2.6, 2.7, 3.2, 3.3, 3.4)
+* Python (tested 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6)
 * `mpmath`
