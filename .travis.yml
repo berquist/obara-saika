@@ -10,5 +10,7 @@ python:
 install:
   - "pip install mpmath"
   - "pip install nose"
+before_script:
+  - "export PYTHONPATH=$PYTHONPATH:$(pwd)"
 script:
   - "make nosetest"

@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from math import sqrt, pi, exp
 from mpmath import gamma, gammainc
 import sys
