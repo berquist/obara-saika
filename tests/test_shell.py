@@ -1,4 +1,4 @@
-from obarasaika.obarasaika.shell import (get_ijk_list, get_shell2)
+from obarasaika.shell import get_ijk_list, get_shell2
 
 def test_get_ijk_list():
     """Tests for get_ijk_list() up to m = 2."""

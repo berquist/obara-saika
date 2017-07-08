@@ -1,10 +1,6 @@
 from __future__ import print_function
 
-from obarasaika.obarasaika.obara_saika import get_coulomb
-from obarasaika.obarasaika.obara_saika import get_overlap
-from obarasaika.obarasaika.obara_saika import get_kinetic
-from obarasaika.obarasaika.obara_saika import get_nuclear
-from obarasaika.obarasaika.obara_saika import get_moment
+from obarasaika.obara_saika import get_coulomb, get_overlap, get_kinetic, get_nuclear, get_moment
 
 
 def test_get_coulomb():

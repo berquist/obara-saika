@@ -2,8 +2,9 @@ from __future__ import print_function
 
 from itertools import product
 
-import obarasaika.obarasaika.shell as shell
-import obarasaika.obarasaika.obara_saika as os
+import obarasaika.shell as shell
+import obarasaika.obara_saika as os
+
 
 za = 1.1
 zb = 1.2
