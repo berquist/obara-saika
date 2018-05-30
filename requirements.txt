@@ -1,1 +1,4 @@
 mpmath
+pytest
+coverage
+pytest-cov
