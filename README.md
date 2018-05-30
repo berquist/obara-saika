@@ -16,6 +16,6 @@ Originally forked from [here](https://github.com/bast/obara-saika) with many tha
 
 ## Dependencies
 
-* Python (tested 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6)
+* Python (tested 2.7, 3.6)
 * `mpmath`
 * For testing, either nose or pytest should work; check the Makefile.

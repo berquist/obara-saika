@@ -1,16 +1,12 @@
+sudo: false
+dist: trusty
 language: python
 python:
-  - "2.6"
-  - "2.7"
-  - "3.2"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-  - "3.6"
+  - 2.7
+  - 3.6
 install:
-  - "pip install mpmath"
-  - "pip install nose"
+  - pip install -r requirements.txt
 before_script:
-  - "export PYTHONPATH=$PYTHONPATH:$(pwd)"
+  - export PYTHONPATH="$PYTHONPATH:$(pwd)"
 script:
-  - "make nosetest"
+  - make test
