@@ -1,3 +1,5 @@
+test: pytest
+
 nosetest:
 	nosetests --verbosity=2 --with-doctest obarasaika tests
 
