@@ -67,6 +67,12 @@ class X4:
         self.q = q
         self.order = order
 
+    def __repr__(self):
+        return "X4({}, {}, {}, {})".format(self.scale,
+                                           self.prefactors,
+                                           self.q,
+                                           self.order)
+
 #-------------------------------------------------------------------------------
 
 def list_is_flat(l):
@@ -106,31 +112,6 @@ def find_fun_to_lower(q, n):
     Arguments:
     q -- The list of exponents, length == 3 * n.
     n -- The number of integral centers.
-
-    >>> find_fun_to_lower([1, 0, 0, 0, 0, 0], 2)
-    0
-    >>> find_fun_to_lower([0, 1, 0, 0, 0, 0], 2)
-    0
-    >>> find_fun_to_lower([0, 0, 1, 0, 0, 0], 2)
-    0
-    >>> find_fun_to_lower([0, 0, 0, 1, 0, 0], 2)
-    1
-    >>> find_fun_to_lower([0, 0, 0, 0, 1, 0], 2)
-    1
-    >>> find_fun_to_lower([0, 0, 0, 0, 0, 1], 2)
-    1
-    >>> find_fun_to_lower([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], 4)
-    1
-    >>> find_fun_to_lower([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], 4)
-    3
-    >>> find_fun_to_lower([1, 0, 0, 0, 0, 0, 0, 0, 1], 3)
-    0
-    >>> find_fun_to_lower([0, 0, 0, 0, 0, 0, 0, 0, 1], 3)
-    2
-    >>> find_fun_to_lower([0, 0, 0, 0, 1, 0, 0, 0, 1], 3)
-    1
-    >>> find_fun_to_lower([0, 0, 0, 0, 2, 0, 0, 0, 1], 3)
-    2
     """
 
     # Determine the total angular momentum on each center.
@@ -161,13 +142,6 @@ def find_component_to_lower(fun):
 
     Arguments:
     fun -- The coefficients for a single basis function (list of 3 integers).
-
-    >>> find_component_to_lower([0, 0, 1])
-    2
-    >>> find_component_to_lower([0, 1, 1])
-    1
-    >>> find_component_to_lower([1, 0, 1])
-    0
     """
 
     for i, c in enumerate(fun):

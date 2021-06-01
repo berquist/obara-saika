@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from obarasaika.obara_saika import get_coulomb, get_overlap, get_kinetic, get_nuclear, get_moment
 
 
@@ -18,9 +16,16 @@ def test_get_coulomb():
 
     thresh = 1.0e-16
 
+    ref = 0.08608517834596989
+    integral = get_coulomb(za, zb, zc, zd, ra, rb, rc, rd, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    assert abs(integral - ref) < thresh
+
+    ref = -0.046888060557776973
+    integral = get_coulomb(za, zb, zc, zd, ra, rb, rc, rd, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    assert abs(integral - ref) < thresh
+
     ref = 1.71817807954e-05
     integral = get_coulomb(za, zb, zc, zd, ra, rb, rc, rd, [2, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0])
-
     assert abs(integral - ref) < thresh
 
 
